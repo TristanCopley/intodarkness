@@ -1,0 +1,21 @@
+{
+  "name": "intodarkness",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0"
+  },
+  "dependencies": {
+    "cannon-es": "^0.20.0",
+    "postprocessing": "^6.29.1",
+    "socket.io": "^4.5.4",
+    "socket.io-client": "^4.5.4",
+    "three": "^0.148.0"
+  }
+}
