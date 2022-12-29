@@ -36,7 +36,9 @@ socket.on("connect", () => { // Log when the socket connects and disconnects
 /*
  * Initialize the scene, camera, and renderer
  */
+
 export const scene = new THREE.Scene();
+
 export const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 export const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance",
@@ -51,27 +53,29 @@ export const composer = new EffectComposer(renderer, {
 });
 composer.addPass(new RenderPass(scene, camera));
 
-export let physicsWorld = undefined;
 export let entities = [];
 
-// Start physics engine
-export let AMMO = undefined;
-Ammo().then(function(AmmoLib) {
+initController();
 
-  AMMO = AmmoLib;
+// Import the physics library then start the game
+export let AMMO = null;
+export let physicsWorld = null;
 
-  let collisionConfiguration = new AMMO.btDefaultCollisionConfiguration();
-  let dispatcher = new AMMO.btCollisionDispatcher(collisionConfiguration);
-  let overlappingPairCache = new AMMO.btDbvtBroadphase();
-  let solver = new AMMO.btSequentialImpulseConstraintSolver();
-  physicsWorld = new AMMO.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
-  physicsWorld.setGravity(new AMMO.btVector3(0, -0.65, 0));
+Ammo().then((Ammo) => {
+
+  AMMO = Ammo;
+
+  let collisionConfiguration  = new AMMO.btDefaultCollisionConfiguration(),
+      dispatcher              = new AMMO.btCollisionDispatcher(collisionConfiguration),
+      overlappingPairCache    = new AMMO.btDbvtBroadphase(),
+      solver                  = new AMMO.btSequentialImpulseConstraintSolver();
+
+  physicsWorld           = new AMMO.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+  physicsWorld.setGravity(new AMMO.btVector3(0, -1, 0));
 
   initMap();
 
 });
-
-initController();
 
 /*
  * This is the animation / draw loop
@@ -92,27 +96,48 @@ function draw(time = 0) {
 
   // Update the physics world
   if (physicsWorld) {
+    
+    physicsWorld.stepSimulation( dt, 10 );
 
-    physicsWorld.stepSimulation(dt, 10);
-
-    // Iterate over all entities and update their positions based on the physics world
     for (let i = 0; i < entities.length; i++) {
 
       let entity = entities[i];
+      let mesh = entity.mesh;
+      let body = entity.body;
 
-      if (entity.body) {
+      if (body && mesh) {
 
-        let motionState = entity.body.getMotionState();
-        if (motionState) {
+        let ms = body.getMotionState();
+        if (ms) {
 
           let transform = new AMMO.btTransform();
-          motionState.getWorldTransform(transform);
+          ms.getWorldTransform(transform);
+          let p = transform.getOrigin();
+          let q = transform.getRotation();
 
-          let position = transform.getOrigin();
-          let rotation = transform.getRotation();
+          mesh.position.set(
+            p.x(),
+            p.y(),
+            p.z()
+          );
 
-          entity.mesh.position.set(position.x(), position.y(), position.z());
-          entity.mesh.quaternion.set(rotation.x(), rotation.y(), rotation.z(), rotation.w());
+          mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+          mesh.rotateX(entity.rotationOffsets[0]);
+          mesh.rotateY(entity.rotationOffsets[1]);
+          mesh.rotateZ(entity.rotationOffsets[2]);
+          mesh.translateOnAxis(new THREE.Vector3(...entity.positionOffsets), 1);
+
+          if (entity.helper) {
+
+            entity.helper.position.set(
+              p.x(), 
+              p.y(),
+              p.z()
+            );
+
+            entity.helper.quaternion.set(q.x(), q.y(), q.z(), q.w());
+
+          }
 
         }
 
