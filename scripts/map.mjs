@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { scene, AMMO, entities, physicsWorld } from '../entry.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { addMeshWithBody } from './utils/util-functions.mjs';
+import { Entity } from './utils/util-classes.mjs';
 
 export function initMap() {
 
@@ -33,8 +34,8 @@ export function initMap() {
     let groundRigidBody = new AMMO.btRigidBody(groundRigidBodyCI);
     physicsWorld.addRigidBody(groundRigidBody);
 
-    entities.push({ mesh: ground, body: groundRigidBody, rotationOffsets: [0, 0, 0], 
-        positionOffsets: [0, 0, 0],});
+    entities['map'] = new Entity({ mesh: ground, body: groundRigidBody, rotationOffsets: [0, 0, 0], 
+        positionOffsets: [0, 0, 0]}); // Add the ground plane to the entities object
 
     // Add a 3D model to the scene
 
@@ -42,52 +43,43 @@ export function initMap() {
 
         addMeshWithBody({
 
-            src: 'assets/pyramid.glb',
+            src: 'assets/chair.glb',
             position: {
                 x: Math.random() * 10 - 5, 
                 y: 100 + Math.random() * 10 - 5, 
                 z: Math.random() * 10 - 5
             },
             rotationOffsets: [0, 0, 0],
-            type: 'mesh',
-            centered: true,
+            type: 'box',
+            centered: false,
             helper: true
 
         });
 
     }
 
-    for (let i = 0; i < 10; i++) {
+    
+    for (let i = 0; i < 100; i++) {
 
         addMeshWithBody({
 
-            src: 'assets/suzanne_blender_monkey.glb',
+            src: `assets/tree${Math.round(Math.random())}.glb`,
             position: {
-                x: Math.random() * 10 - 5, 
-                y: 100 + Math.random() * 10 - 5, 
-                z: Math.random() * 10 - 5
+                x: Math.random() * 100 - 50,
+                y: 0,
+                z: Math.random() * 100 - 50
             },
-            rotationOffsets: [Math.PI / 2, 0, 0],
-            helper: true,
-            type: 'mesh'
+            rotation: {
+                x: 0,
+                y: Math.random() * Math.PI * 2,
+                z: 0
+            },
+            type: 'static_mesh',
+            centered: false,
+            helper: true
 
         });
 
     }
-
-    addMeshWithBody({
-
-        src: 'assets/tree.glb',
-        position: {
-            x: 0,
-            y: 0,
-            z: 0
-        },
-        rotationOffsets: [0, 0, 0],
-        type: 'static_mesh',
-        centered: false,
-        helper: true
-
-    });
 
 }

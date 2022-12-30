@@ -4,7 +4,10 @@ import './style.css';
 import * as THREE from 'three';
 import { initMap } from './scripts/map.mjs';
 import { EffectComposer, RenderPass} from "postprocessing";
-import { initController } from './scripts/controller.mjs';
+import { InputController, initController } from './scripts/controller.mjs';
+import { updateEntities } from './scripts/utils/util-functions.mjs';
+import { initHud, updateHud } from './scripts/hud.mjs';
+import { initPlayer, updatePlayer } from './scripts/player/player.mjs';
 
 /*
  * This is the entry point for the client
@@ -38,7 +41,6 @@ socket.on("connect", () => { // Log when the socket connects and disconnects
  */
 
 export const scene = new THREE.Scene();
-
 export const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 export const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance",
@@ -46,16 +48,33 @@ export const renderer = new THREE.WebGLRenderer({
   stencil: false,
   depth: true
 });
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
 export const composer = new EffectComposer(renderer, {
   frameBufferType: THREE.HalfFloatType
 });
 composer.addPass(new RenderPass(scene, camera));
 
-export let entities = [];
+renderer.setSize( window.innerWidth, window.innerHeight );
+document.body.appendChild( renderer.domElement );
+
+// Resize the renderer when the window is resized
+window.addEventListener( 'resize', onWindowResize, false );
+function onWindowResize() { renderer.setSize( window.innerWidth, window.innerHeight ); }
+
+export let entities = {};
 
 initController();
+
+export const inputController = new InputController(); // Create a new input controller which listens to and updates inputs
+inputController.updateKeybinds({
+
+  attack: ['mouse0'],
+  jump: [' '],
+  forward: ['w', 'ArrowUp'],
+  backward: ['s', 'ArrowDown'],
+  left: ['a', 'ArrowLeft'],
+  right: ['d', 'ArrowRight'],
+
+});
 
 // Import the physics library then start the game
 export let AMMO = null;
@@ -73,6 +92,8 @@ Ammo().then((Ammo) => {
   physicsWorld           = new AMMO.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
   physicsWorld.setGravity(new AMMO.btVector3(0, -1, 0));
 
+  initHud();
+  initPlayer();
   initMap();
 
 });
@@ -91,6 +112,8 @@ function draw(time = 0) {
 
   // Update the camera position and rotation via controller
   // Update the HUD
+  updateHud();
+  updatePlayer();
   // Update entities and their positions
   // Update other players and their positions
 
@@ -99,51 +122,7 @@ function draw(time = 0) {
     
     physicsWorld.stepSimulation( dt, 10 );
 
-    for (let i = 0; i < entities.length; i++) {
-
-      let entity = entities[i];
-      let mesh = entity.mesh;
-      let body = entity.body;
-
-      if (body && mesh) {
-
-        let ms = body.getMotionState();
-        if (ms) {
-
-          let transform = new AMMO.btTransform();
-          ms.getWorldTransform(transform);
-          let p = transform.getOrigin();
-          let q = transform.getRotation();
-
-          mesh.position.set(
-            p.x(),
-            p.y(),
-            p.z()
-          );
-
-          mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
-          mesh.rotateX(entity.rotationOffsets[0]);
-          mesh.rotateY(entity.rotationOffsets[1]);
-          mesh.rotateZ(entity.rotationOffsets[2]);
-          mesh.translateOnAxis(new THREE.Vector3(...entity.positionOffsets), 1);
-
-          if (entity.helper) {
-
-            entity.helper.position.set(
-              p.x(), 
-              p.y(),
-              p.z()
-            );
-
-            entity.helper.quaternion.set(q.x(), q.y(), q.z(), q.w());
-
-          }
-
-        }
-
-      }
-
-    }
+    updateEntities();
 
   }
 

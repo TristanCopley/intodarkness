@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { scene, physicsWorld, entities, AMMO } from '../../entry.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
+import { Entity } from './util-classes.mjs';
+import { Player } from '../player/player.mjs';
 
 /*
  * Creates a model entity with a physics body and adds it to the scene and physics world
@@ -21,7 +23,10 @@ export function addMeshWithBody(options = {}) {
     mass = 1, 
     friction = 0.5,
     restitution = 0.3,
-    type = 'mesh' // mesh, box or sphere
+    type = 'mesh', // mesh, box or sphere
+    uuid = crypto.randomUUID(),
+    lockRotation = false,
+    isPlayer = false
 
   } = options;
 
@@ -48,7 +53,7 @@ export function addMeshWithBody(options = {}) {
       }
     });
 
-    let bbox = new THREE.Box3().setFromObject(meshes[0]);
+    let bbox = new THREE.Box3().setFromObject(model);
 
     let modelVertices = meshes[0].geometry.attributes.position.array;
     meshes[0].geometry.verticesNeedUpdate = true;
@@ -66,24 +71,27 @@ export function addMeshWithBody(options = {}) {
       let modelTransform = new AMMO.btTransform();
       modelTransform.setIdentity();
       modelTransform.setOrigin(new AMMO.btVector3(position.x, position.y, position.z));
-      modelTransform.setRotation(new AMMO.btQuaternion(rotation.x, rotation.y, rotation.z, 1));
+      let rotationQuaternion = new AMMO.btQuaternion();
+      rotationQuaternion.setEulerZYX(rotation.x, rotation.y, rotation.z);
+      modelTransform.setRotation(rotationQuaternion);
       let modelMass = mass;
       let modelLocalInertia = new AMMO.btVector3(0, 0, 0);
       shape.calculateLocalInertia(modelMass, modelLocalInertia);
       let modelMotionState = new AMMO.btDefaultMotionState(modelTransform);
       let modelRigidBodyCI = new AMMO.btRigidBodyConstructionInfo(modelMass, modelMotionState, shape, modelLocalInertia);
-
       let modelRigidBody = new AMMO.btRigidBody(modelRigidBodyCI);
+      if (lockRotation) modelRigidBody.setAngularFactor(new AMMO.btVector3(0, 0, 0));
       modelRigidBody.setFriction(friction);
       modelRigidBody.setRestitution(restitution);
       physicsWorld.addRigidBody(modelRigidBody);
 
-      let entity = {
+      let opts = {
         mesh: model,
         body: modelRigidBody,
         rotationOffsets: rotationOffsets,
         positionOffsets: [-center.x, -center.y, -center.z],
       }
+      let entity = isPlayer ? new Player(opts) : new Entity(opts);
 
       if (helper) {
 
@@ -92,7 +100,7 @@ export function addMeshWithBody(options = {}) {
 
       }
 
-      entities.push(entity);
+      entities[uuid] = entity;
 
       return;
 
@@ -149,20 +157,27 @@ export function addMeshWithBody(options = {}) {
       let modelTransform = new AMMO.btTransform();
       modelTransform.setIdentity();
       modelTransform.setOrigin(new AMMO.btVector3(position.x, position.y, position.z));
-      modelTransform.setRotation(new AMMO.btQuaternion(rotation.x, rotation.y, rotation.z, 1));
+      let rotationQuaternion = new AMMO.btQuaternion();
+      rotationQuaternion.setEulerZYX(rotation.x, rotation.y, rotation.z);
+      modelTransform.setRotation(rotationQuaternion);
       let modelMass = 0;
       let modelLocalInertia = new AMMO.btVector3(0, 0, 0);
       shape.calculateLocalInertia(modelMass, modelLocalInertia);
       let modelMotionState = new AMMO.btDefaultMotionState(modelTransform);
       let modelRigidBodyCI = new AMMO.btRigidBodyConstructionInfo(modelMass, modelMotionState, shape, modelLocalInertia);
-
       let modelRigidBody = new AMMO.btRigidBody(modelRigidBodyCI);
       modelRigidBody.setFriction(friction);
+      if (lockRotation) modelRigidBody.setAngularFactor(new AMMO.btVector3(0, 0, 0));
       modelRigidBody.setRestitution(restitution);
       physicsWorld.addRigidBody(modelRigidBody);
 
-      let entity = { mesh: model, body: modelRigidBody, rotationOffsets: rotationOffsets, 
-        positionOffsets: [-center.x, -center.y, -center.z]}
+      let opts = {
+        mesh: model,
+        body: modelRigidBody,
+        rotationOffsets: rotationOffsets,
+        positionOffsets: [-center.x, -center.y, -center.z],
+      }
+      let entity = isPlayer ? new Player(opts) : new Entity(opts);
 
       if (!centered) entity.positionOffsets = [0, 0, 0];
 
@@ -176,6 +191,8 @@ export function addMeshWithBody(options = {}) {
         scene.add(entity.helper);
 
       }
+
+      entities[uuid] = entity;
 
       return;
 
@@ -192,20 +209,27 @@ export function addMeshWithBody(options = {}) {
     let modelTransform = new AMMO.btTransform();
     modelTransform.setIdentity();
     modelTransform.setOrigin(new AMMO.btVector3(position.x, position.y, position.z));
-    modelTransform.setRotation(new AMMO.btQuaternion(rotation.x, rotation.y, rotation.z, 1));
+    let rotationQuaternion = new AMMO.btQuaternion();
+    rotationQuaternion.setEulerZYX(rotation.x, rotation.y, rotation.z);
+    modelTransform.setRotation(rotationQuaternion);
     let modelMass = mass;
     let modelLocalInertia = new AMMO.btVector3(0, 0, 0);
     shape.calculateLocalInertia(modelMass, modelLocalInertia);
     let modelMotionState = new AMMO.btDefaultMotionState(modelTransform);
     let modelRigidBodyCI = new AMMO.btRigidBodyConstructionInfo(modelMass, modelMotionState, shape, modelLocalInertia);
-
     let modelRigidBody = new AMMO.btRigidBody(modelRigidBodyCI);
     modelRigidBody.setFriction(friction);
+    if (lockRotation) modelRigidBody.setAngularFactor(new AMMO.btVector3(0, 0, 0));
     modelRigidBody.setRestitution(restitution);
     physicsWorld.addRigidBody(modelRigidBody);
 
-    let entity = { mesh: model, body: modelRigidBody, rotationOffsets: rotationOffsets, 
-      positionOffsets: [-center.x, -center.y, -center.z]}
+    let opts = {
+      mesh: model,
+      body: modelRigidBody,
+      rotationOffsets: rotationOffsets,
+      positionOffsets: [-center.x, -center.y, -center.z],
+    }
+    let entity = isPlayer ? new Player(opts) : new Entity(opts);
 
     if (!centered) entity.positionOffsets = [0, 0, 0];
 
@@ -225,10 +249,105 @@ export function addMeshWithBody(options = {}) {
 
     }
 
-    entities.push(entity);
+    entities[uuid] = entity;
 
   }, undefined, (error) => {
       console.error(error);
   });
+
+}
+
+export function addMeshWithoutPhysics(options = {}) {
+
+  let {
+    src = null,
+    position = {x: 0, y: 0, z: 0}, 
+    rotation = {x: 0, y: 0, z: 0},
+    centered = true,
+    scale = {x: 1, y: 1, z: 1},
+    uuid = crypto.randomUUID()
+  } = options;
+
+  let loader = new GLTFLoader();
+  loader.load(src, (gltf) => {
+
+    const box = new THREE.Box3().setFromObject( gltf.scene );
+    const center = box.getCenter( new THREE.Vector3() );
+
+    let model = gltf.scene;
+    model.position.set(position.x, position.y, position.z);
+    model.rotation.set(rotation.x, rotation.y, rotation.z);
+    model.scale.set(scale.x, scale.y, scale.z);
+
+    scene.add(model);
+
+    let entity = new Entity({
+      mesh: model, 
+      body: null, 
+      rotationOffsets: [0, 0, 0], 
+      positionOffsets: [-center.x, -center.y, -center.z]
+    });
+
+    if (!centered) entity.positionOffsets = [0, 0, 0];
+
+    entities[uuid] = entity;
+
+  }, undefined, (error) => {
+
+    console.error(error);
+
+  });
+
+}
+
+export function updateEntities() {
+
+  for (let id in entities) {
+
+    let entity = entities[id];
+    let mesh = entity.mesh;
+    let body = entity.body;
+
+    if (body && mesh) {
+
+      let ms = body.getMotionState();
+      if (ms) {
+
+        let transform = new AMMO.btTransform(); // Invoking new transforms must be cleaned up with destroy
+        ms.getWorldTransform(transform);
+        let p = transform.getOrigin();
+        let q = transform.getRotation();
+
+        mesh.position.set(
+          p.x(),
+          p.y(),
+          p.z()
+        );
+
+        mesh.quaternion.set(q.x(), q.y(), q.z(), q.w());
+        mesh.rotateX(entity.rotationOffsets[0]);
+        mesh.rotateY(entity.rotationOffsets[1]);
+        mesh.rotateZ(entity.rotationOffsets[2]);
+        mesh.translateOnAxis(new THREE.Vector3(...entity.positionOffsets), 1);
+
+        if (entity.helper) {
+
+          entity.helper.position.set(
+            p.x(), 
+            p.y(),
+            p.z()
+          );
+
+          entity.helper.quaternion.set(q.x(), q.y(), q.z(), q.w());
+
+        }
+
+        AMMO.destroy(transform);
+
+      }
+
+    }
+
+  }
 
 }
