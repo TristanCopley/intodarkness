@@ -2,140 +2,166 @@
 import { io } from "socket.io-client";
 import './style.css';
 import * as THREE from 'three';
-import { initMap } from './scripts/map.mjs';
-import { EffectComposer, RenderPass} from "postprocessing";
-import { InputController, initController } from './scripts/controller.mjs';
-import { updateEntities } from './scripts/utils/util-functions.mjs';
-import { initHud, updateHud } from './scripts/hud.mjs';
-import { initPlayer, updatePlayer } from './scripts/player/player.mjs';
+import { EffectComposer, RenderPass } from "postprocessing";
+import { Project, Scene3D } from 'enable3d';
+import { AmmoPhysics, PhysicsLoader } from '@enable3d/ammo-physics';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-/*
- * This is the entry point for the client
- */
-export const client = {
-  inGame: false,
-  name: "",
-  id: "",
-  body: undefined,
-};
+async function addModel(scene, physics) {
 
-/*
- * Connects to the server and listens for events with socket
- */
-const socket = io("http://localhost:3000", {
-  withCredentials: true, // Required for CORS
-  origin: "http://127.0.0.1:5173",
-  extraHeaders: {
-    "z8phT6": "*" // Random string that matches the server's CORS policy
-  }
-});
-socket.on("connect", () => { // Log when the socket connects and disconnects
-  console.debug("Socket connected"); socket.emit('join-room', 'new');
-  socket.on("disconnect", () => {
-    console.warn("Socket disconnected");
-  });
-});
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync('assets/suzanne_blender_monkey.glb');
 
-/*
- * Initialize the scene, camera, and renderer
- */
+  const model = gltf.scene;
+  model.scale.set(1, 1, 1);
+  model.position.y = 5;
 
-export const scene = new THREE.Scene();
-export const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-export const renderer = new THREE.WebGLRenderer({
-  powerPreference: "high-performance",
-  antialias: false,
-  stencil: false,
-  depth: true
-});
-export const composer = new EffectComposer(renderer, {
-  frameBufferType: THREE.HalfFloatType
-});
-composer.addPass(new RenderPass(scene, camera));
-
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
-
-// Resize the renderer when the window is resized
-window.addEventListener( 'resize', onWindowResize, false );
-function onWindowResize() { renderer.setSize( window.innerWidth, window.innerHeight ); }
-
-export let entities = {};
-
-initController();
-
-export const inputController = new InputController(); // Create a new input controller which listens to and updates inputs
-inputController.updateKeybinds({
-
-  attack: ['mouse0'],
-  jump: [' '],
-  forward: ['w', 'ArrowUp'],
-  backward: ['s', 'ArrowDown'],
-  left: ['a', 'ArrowLeft'],
-  right: ['d', 'ArrowRight'],
-
-});
-
-// Import the physics library then start the game
-export let AMMO = null;
-export let physicsWorld = null;
-
-Ammo().then((Ammo) => {
-
-  AMMO = Ammo;
-
-  let collisionConfiguration  = new AMMO.btDefaultCollisionConfiguration(),
-      dispatcher              = new AMMO.btCollisionDispatcher(collisionConfiguration),
-      overlappingPairCache    = new AMMO.btDbvtBroadphase(),
-      solver                  = new AMMO.btSequentialImpulseConstraintSolver();
-
-  physicsWorld           = new AMMO.btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
-  physicsWorld.setGravity(new AMMO.btVector3(0, -1, 0));
-
-  initHud();
-  initPlayer();
-  initMap();
-
-});
-
-/*
- * This is the animation / draw loop
- */
-let lastTime = 0;
-let dt = 0;
-
-function draw(time = 0) {
-
-  // Calculate the delta time
-  dt = time - lastTime;
-  lastTime = time;
-
-  // Update the camera position and rotation via controller
-  // Update the HUD
-  updateHud();
-  updatePlayer();
-  // Update entities and their positions
-  // Update other players and their positions
-
-  // Update the physics world
-  if (physicsWorld) {
-    
-    physicsWorld.stepSimulation( dt, 10 );
-
-    updateEntities();
-
-  }
-
-  // Render the scene
-  composer.render(dt);
-
-  // Request the next frame
-  requestAnimationFrame( draw );
+  scene.add(model);
+  model.position.y = 14;
+  physics.add.existing(model, { shape: 'box', mass: 1 });
 
 }
 
-// Start the draw loop
-draw();
+function main() {
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  document.body.appendChild( renderer.domElement );
+
+  const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+  const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+  const cube = new THREE.Mesh( geometry, material );
+  scene.add( cube );
+  cube.position.y = 10;
+
+  cube.rotateX(0.5);
+
+  const groundGeometry = new THREE.BoxGeometry( 10, 1, 10 );
+  const groundMaterial = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+  const ground = new THREE.Mesh( groundGeometry, groundMaterial );
+  scene.add( ground );
+  ground.position.y = -2;
+
+  camera.position.x = 10;
+  camera.position.z = 10;
+  camera.position.y = 10;
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+
+  camera.lookAt(ground.position);
+
+  const physics = new AmmoPhysics(scene);
+  physics.debug.enable(true);
+
+  physics.add.existing(cube, { shape: 'box', mass: 1 });
+  physics.add.existing(ground, { shape: 'box', mass: 0, width: 10, height: 1, depth: 10 }); // Specify dimensions for some reason
+
+  addModel(scene, physics)
+
+  function animate() {
+    requestAnimationFrame( animate );
+
+    // update physics
+    physics.update(7)
+    // update the physics debugger
+    physics.updateDebugger()
+
+    renderer.render( scene, camera );
+  };
+
+  animate();
+
+}
+
+PhysicsLoader('ammo', () => { main() });
+
+
+//PhysicsLoader('ammo.js', () => MainScene())
+
+// /*
+//  * This is the entry point for the client
+//  */
+// export const client = {
+//   inGame: false,
+//   name: "",
+//   id: ""
+// };
+
+// /*
+//  * Connects to the server and listens for events with socket
+//  */
+// const socket = io("http://localhost:3000", {
+//   withCredentials: true, // Required for CORS
+//   origin: "http://127.0.0.1:5173",
+//   extraHeaders: {
+//     "z8phT6": "*" // Random string that matches the server's CORS policy
+//   }
+// });
+// socket.on("connect", () => { // Log when the socket connects and disconnects
+//   console.debug("Socket connected"); socket.emit('join-room', 'new'); // Joins a new room
+//   socket.on("disconnect", () => {
+//     console.warn("Socket disconnected");
+//   });
+// });
+
+// /*
+//  * Initialize the scene, camera, and renderer
+//  */
+
+// export let scene, camera, renderer, composer;
+
+// const MainScene = () => {
+
+// }
+
+// // export const scene = new THREE.Scene();
+// // export const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+// // export const renderer = new THREE.WebGLRenderer({
+// //   powerPreference: "high-performance",
+// //   antialias: false,
+// //   stencil: false,
+// //   depth: true
+// // });
+// // export const composer = new EffectComposer(renderer, {
+// //   frameBufferType: THREE.HalfFloatType
+// // });
+// // composer.addPass(new RenderPass(scene, camera));
+
+// // renderer.setSize( window.innerWidth, window.innerHeight );
+// // document.body.appendChild( renderer.domElement );
+
+// // Resize the renderer when the window is resized
+// window.addEventListener( 'resize', onWindowResize, false );
+// function onWindowResize() { renderer.setSize( window.innerWidth, window.innerHeight ); };
+
+// /*
+//  * This is the animation / draw loop
+//  */
+// let lastTime = 0;
+// let dt = 0;
+
+// function draw(time = 0) {
+
+//   // Calculate the delta time
+//   dt = time - lastTime;
+//   lastTime = time;
+
+
+
+//   // Render the scene
+//   composer.render(dt);
+
+//   // Request the next frame
+//   requestAnimationFrame( draw );
+
+// }
+
+// // Start the draw loop
+// draw();
 
 
 /*

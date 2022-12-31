@@ -12,9 +12,10 @@
     "vite": "^4.0.0"
   },
   "dependencies": {
-    "@dimforge/rapier3d": "^0.10.0",
-    "postprocessing": "^6.29.1",
+    "@enable3d/ammo-physics": "^0.25.3",
+    "enable3d": "^0.25.3",
+    "postprocessing": "^6.29.2",
     "socket.io-client": "^4.5.4",
-    "three": "^0.148.0"
+    "three": "^0.144.0"
   }
 }
