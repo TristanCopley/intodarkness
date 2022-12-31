@@ -3,23 +3,40 @@ import { io } from "socket.io-client";
 import './style.css';
 import * as THREE from 'three';
 import { EffectComposer, RenderPass } from "postprocessing";
-import { Project, Scene3D } from 'enable3d';
 import { AmmoPhysics, PhysicsLoader } from '@enable3d/ammo-physics';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+// Use gulp to strip debug console.log from production build
+
+// Add models must be centered on origin in blender
+
+// Loads pysics then runs main
+PhysicsLoader('./ammo', () => { main() });
+
 async function addModel(scene, physics) {
 
   const loader = new GLTFLoader();
-  const gltf = await loader.loadAsync('assets/suzanne_blender_monkey.glb');
+  const gltf = await loader.loadAsync('assets/bowie_knife.glb');
 
   const model = gltf.scene;
+  const box = new THREE.Box3().setFromObject( model );
+
   model.scale.set(1, 1, 1);
   model.position.y = 5;
 
+  model.traverse((child) => {
+
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+
+  });
+
   scene.add(model);
   model.position.y = 14;
-  physics.add.existing(model, { shape: 'box', mass: 1 });
+  physics.add.existing(model, { shape: 'hull', mass: 1, width: box.max.x - box.min.x, height: box.max.y - box.min.y, depth: box.max.z - box.min.z });
 
 }
 
@@ -76,8 +93,6 @@ function main() {
   animate();
 
 }
-
-PhysicsLoader('ammo', () => { main() });
 
 
 //PhysicsLoader('ammo.js', () => MainScene())
