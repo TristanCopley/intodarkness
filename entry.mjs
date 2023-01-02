@@ -22,18 +22,18 @@ import {
   _FOV,
   _ASPECT_RATIO 
 } from './scripts/initialization/constants.mjs'; // Import constants
+import Input_Controller from './scripts/controls/input_controller.mjs'; // Import input controller
+import { update_look_direction } from './scripts/client/camera.mjs';
 
-// Export global variables
-export let scene, camera, renderer, composer, game_objects, models, physics;
-
-PhysicsLoader('./ammo', () => { main(); });
+/*
+ * Export global variables
+ */
+export let scene, camera, renderer, composer, game_objects, models, physics, input_controller;
 
 async function main() {
 
-  models = {}; // Dict of models
-
   /*
-   * Initialize the scene, camera, and renderer
+   * Initializes globals
    */
   scene = new THREE.Scene(); // Create the scene
   camera = new THREE.PerspectiveCamera( _FOV, _ASPECT_RATIO, 0.1, 1000 ); // Create the camera with FOV of 75 and aspect ratio 16:9
@@ -46,13 +46,17 @@ async function main() {
   composer = new EffectComposer(renderer, {
     frameBufferType: THREE.HalfFloatType // Use half float type to enable HDR (Required for allowing low brightness objects to glow)
   }); // Create the postprocessing composer
-
-  renderer.setSize( window.innerWidth, window.innerHeight );
-  document.body.appendChild( renderer.domElement ); // Add the renderer to the DOM
-
-  window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); }; // Resize the renderer when the window is resized
-
   composer.addPass(new RenderPass(scene, camera)); // Add the render pass to the composer
+
+  // Set up the renderer and append it to the DOM, also add a resize listener
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.domElement.id = 'game_canvas';
+  document.body.appendChild( renderer.domElement );
+
+  window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); };
+
+  // Set up models
+  models = {};
 
   // Enable physics
   physics = new AmmoPhysics(scene);
@@ -63,12 +67,24 @@ async function main() {
 
   // Generate the map
   await generateMap();
+  
+  input_controller = new Input_Controller();
+  input_controller.set_keybinds(
+    {
+      'move_forward': ['w', 'arrowup'],
+      'move_backward': ['s', 'arrowdown'],
+      'move_left': ['a', 'arrowleft'],
+      'move_right': ['d', 'arrowright'],
+      'jump': [' '],
+      'sprint': ['shift'],
+      'crouch': ['ctrl'],
+      'attack': ['mouse0'],
+    }
+  );
 
   // TEST REMOVE FOLLOWING CODE
-
-  camera.position.set(5, 5, 5);
+  camera.position.set(25, 25, 25);
   camera.lookAt(0, 0, 0);
-
   /////////////////////////////
 
   // Instantiate timing objects
@@ -80,6 +96,10 @@ async function main() {
     // Calculate the delta time
     dt = time - lastTime;
     lastTime = time;
+    
+    update_look_direction();
+
+    physics.updateDebugger();
 
     // Update physics
     physics.update(dt);
@@ -96,6 +116,11 @@ async function main() {
   game_cycle();
 
 };
+
+/*
+ * Load the physics engine and then calls main
+ */
+PhysicsLoader('./ammo', () => { main(); });
 
 //HUD
 //ATTACKING
