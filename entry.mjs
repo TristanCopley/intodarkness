@@ -24,6 +24,7 @@ import {
 } from './scripts/initialization/constants.mjs'; // Import constants
 import Input_Controller from './scripts/controls/input_controller.mjs'; // Import input controller
 import { update_look_direction } from './scripts/client/camera.mjs';
+import { move_player } from './scripts/client/movement.mjs';
 
 /*
  * Export global variables
@@ -55,8 +56,9 @@ async function main() {
 
   window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); };
 
-  // Set up models
+  // Set up models and game_objects
   models = {};
+  game_objects = {};
 
   // Enable physics
   physics = new AmmoPhysics(scene);
@@ -85,6 +87,7 @@ async function main() {
   // TEST REMOVE FOLLOWING CODE
   camera.position.set(25, 25, 25);
   camera.lookAt(0, 0, 0);
+  console.log('physics', physics);
   /////////////////////////////
 
   // Instantiate timing objects
@@ -97,7 +100,8 @@ async function main() {
     dt = time - lastTime;
     lastTime = time;
     
-    update_look_direction();
+    update_look_direction(dt);
+    move_player(dt);
 
     physics.updateDebugger();
 

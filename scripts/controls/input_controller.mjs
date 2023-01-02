@@ -95,7 +95,7 @@ export default class Input_Controller {
             if (movement_history.length < this.buffer_length) return; // Wait until the buffer is full
 
             if ((movement_history[0].mag + movement_history[2].mag + 50) < movement_history[1].mag || movement_history[1].mag > 100) {
-                
+
                 movementX = (movement_history[0].x + movement_history[2].x) / 2;
                 movementY = (movement_history[0].y + movement_history[2].y) / 2;
                 
