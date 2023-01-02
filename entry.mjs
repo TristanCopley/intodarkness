@@ -1,98 +1,112 @@
-// Imports
-import { io } from "socket.io-client";
-import './style.css';
-import * as THREE from 'three';
-import { EffectComposer, RenderPass } from "postprocessing";
-import { AmmoPhysics, PhysicsLoader } from '@enable3d/ammo-physics';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+/* 
+ * Imports 
+ */
+import './style.css'; // Import the CSS using VITE's CSS import
+import { io } from "socket.io-client"; // Import socket.io -> needs to be moved to a separate file
+import * as THREE from 'three'; // Import three.js
+import { 
+  EffectComposer, 
+  RenderPass 
+} from "postprocessing"; // Import postprocessing
+import { 
+  AmmoPhysics, 
+  PhysicsLoader 
+} from '@enable3d/ammo-physics'; // Import physics
+import { 
+  preload 
+} from './scripts/initialization/preload.mjs'; // Import preload function
+import { 
+  generateMap 
+} from './scripts/map/test.mjs'; // Import preload function
+import { 
+  _FOV,
+  _ASPECT_RATIO 
+} from './scripts/initialization/constants.mjs'; // Import constants
 
-// Use gulp to strip debug console.log from production build
+// Export global variables
+export let scene, camera, renderer, composer, game_objects, models, physics;
 
-// Add models must be centered on origin in blender
+PhysicsLoader('./ammo', () => { main(); });
 
-// Loads pysics then runs main
-PhysicsLoader('./ammo', () => { main() });
+async function main() {
 
-async function addModel(scene, physics) {
+  models = {}; // Dict of models
 
-  const loader = new GLTFLoader();
-  const gltf = await loader.loadAsync('assets/bowie_knife.glb');
+  /*
+   * Initialize the scene, camera, and renderer
+   */
+  scene = new THREE.Scene(); // Create the scene
+  camera = new THREE.PerspectiveCamera( _FOV, _ASPECT_RATIO, 0.1, 1000 ); // Create the camera with FOV of 75 and aspect ratio 16:9
+  renderer = new THREE.WebGLRenderer({
+    powerPreference: "high-performance",
+    antialias: false,
+    stencil: false,
+    depth: true // Enable depth buffer for objects
+  }); // Create the renderer
+  composer = new EffectComposer(renderer, {
+    frameBufferType: THREE.HalfFloatType // Use half float type to enable HDR (Required for allowing low brightness objects to glow)
+  }); // Create the postprocessing composer
 
-  const model = gltf.scene;
-  const box = new THREE.Box3().setFromObject( model );
-
-  model.scale.set(1, 1, 1);
-  model.position.y = 5;
-
-  model.traverse((child) => {
-
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
-
-  });
-
-  scene.add(model);
-  model.position.y = 14;
-  physics.add.existing(model, { shape: 'hull', mass: 1, width: box.max.x - box.min.x, height: box.max.y - box.min.y, depth: box.max.z - box.min.z });
-
-}
-
-function main() {
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-
-  const renderer = new THREE.WebGLRenderer();
   renderer.setSize( window.innerWidth, window.innerHeight );
-  document.body.appendChild( renderer.domElement );
+  document.body.appendChild( renderer.domElement ); // Add the renderer to the DOM
 
-  const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-  const material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-  const cube = new THREE.Mesh( geometry, material );
-  scene.add( cube );
-  cube.position.y = 10;
+  window.onresize = () => { renderer.setSize(window.innerWidth, window.innerHeight); }; // Resize the renderer when the window is resized
 
-  cube.rotateX(0.5);
+  composer.addPass(new RenderPass(scene, camera)); // Add the render pass to the composer
 
-  const groundGeometry = new THREE.BoxGeometry( 10, 1, 10 );
-  const groundMaterial = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-  const ground = new THREE.Mesh( groundGeometry, groundMaterial );
-  scene.add( ground );
-  ground.position.y = -2;
-
-  camera.position.x = 10;
-  camera.position.z = 10;
-  camera.position.y = 10;
-
-  const controls = new OrbitControls(camera, renderer.domElement);
-
-  camera.lookAt(ground.position);
-
-  const physics = new AmmoPhysics(scene);
+  // Enable physics
+  physics = new AmmoPhysics(scene);
   physics.debug.enable(true);
 
-  physics.add.existing(cube, { shape: 'box', mass: 1 });
-  physics.add.existing(ground, { shape: 'box', mass: 0, width: 10, height: 1, depth: 10 }); // Specify dimensions for some reason
+  // Preload assets for use
+  await preload();
 
-  addModel(scene, physics)
+  // Generate the map
+  await generateMap();
 
-  function animate() {
-    requestAnimationFrame( animate );
+  // TEST REMOVE FOLLOWING CODE
 
-    // update physics
-    physics.update(7)
-    // update the physics debugger
-    physics.updateDebugger()
+  camera.position.set(5, 5, 5);
+  camera.lookAt(0, 0, 0);
 
-    renderer.render( scene, camera );
-  };
+  /////////////////////////////
 
-  animate();
+  // Instantiate timing objects
+  let lastTime = 0;
+  let dt = 0;
 
-}
+  function game_cycle(time = 0) { // Default time to 0 if not provided or undefined
+
+    // Calculate the delta time
+    dt = time - lastTime;
+    lastTime = time;
+
+    // Update physics
+    physics.update(dt);
+
+    // Render the scene
+    composer.render(dt);
+
+    // Request the next frame
+    requestAnimationFrame(game_cycle);
+
+  }
+
+  // Start game cycle
+  game_cycle();
+
+};
+
+//HUD
+//ATTACKING
+//GETTING ATTACKED
+//MOVING
+//COLLIDING
+//INTERPOLATION
+//RENDERING ENTITIES
+//RENDERING TERRAIN
+//SOUND
+
 
 
 //PhysicsLoader('ammo.js', () => MainScene())
