@@ -4,14 +4,11 @@
 import './style.css'; // Import the CSS using VITE's CSS import
 import { io } from "socket.io-client"; // Import socket.io -> needs to be moved to a separate file
 import * as THREE from 'three'; // Import three.js
+import * as CANNON from 'cannon-es'; // Import cannon-es
 import { 
   EffectComposer, 
   RenderPass 
 } from "postprocessing"; // Import postprocessing
-import { 
-  AmmoPhysics, 
-  PhysicsLoader 
-} from '@enable3d/ammo-physics'; // Import physics
 import { 
   preload 
 } from './scripts/initialization/preload.mjs'; // Import preload function
@@ -23,13 +20,12 @@ import {
   _ASPECT_RATIO 
 } from './scripts/initialization/constants.mjs'; // Import constants
 import Input_Controller from './scripts/controls/input_controller.mjs'; // Import input controller
-import { update_look_direction } from './scripts/client/camera.mjs';
-import { move_player } from './scripts/client/movement.mjs';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 /*
  * Export global variables
  */
-export let scene, camera, renderer, composer, game_objects, models, physics, input_controller;
+export let scene, camera, renderer, composer, game_objects, models, world, input_controller;
 
 async function main() {
 
@@ -60,9 +56,23 @@ async function main() {
   models = {};
   game_objects = {};
 
-  // Enable physics
-  physics = new AmmoPhysics(scene);
-  physics.debug.enable(true);
+  // World
+  world = new CANNON.World()
+
+  // Tweak contact properties.
+  // Contact stiffness - use to make softer/harder contacts
+  world.defaultContactMaterial.contactEquationStiffness = 1e9;
+
+  // Stabilization time in number of timesteps
+  world.defaultContactMaterial.contactEquationRelaxation = 4;
+
+  const solver = new CANNON.GSSolver();
+  solver.iterations = 7;
+  solver.tolerance = 0.1;
+  world.solver = new CANNON.SplitSolver(solver);
+  // use this to test non-split solver
+  // world.solver = solver
+  world.gravity.set(0, -20, 0);
 
   // Preload assets for use
   await preload();
@@ -70,19 +80,22 @@ async function main() {
   // Generate the map
   await generateMap();
   
-  input_controller = new Input_Controller();
-  input_controller.set_keybinds(
-    {
-      'move_forward': ['w', 'arrowup'],
-      'move_backward': ['s', 'arrowdown'],
-      'move_left': ['a', 'arrowleft'],
-      'move_right': ['d', 'arrowright'],
-      'jump': [' '],
-      'sprint': ['shift'],
-      'crouch': ['ctrl'],
-      'attack': ['mouse0'],
-    }
-  );
+  // input_controller = new Input_Controller();
+  // input_controller.set_keybinds(
+  //   {
+  //     'move_forward': ['w', 'arrowup'],
+  //     'move_backward': ['s', 'arrowdown'],
+  //     'move_left': ['a', 'arrowleft'],
+  //     'move_right': ['d', 'arrowright'],
+  //     'jump': [' '],
+  //     'sprint': ['shift'],
+  //     'crouch': ['ctrl'],
+  //     'attack': ['mouse0'],
+  //   }
+  // );
+  
+  camera.position.set(0, 20, 0);
+  let controls = new OrbitControls(camera, renderer.domElement);
 
   // Instantiate timing objects
   let lastTime = 0;
@@ -94,13 +107,15 @@ async function main() {
     dt = time - lastTime;
     lastTime = time;
     
-    update_look_direction(dt);
-    move_player(dt);
-
-    physics.updateDebugger();
-
     // Update physics
-    physics.update(dt);
+    world.step(0.002, dt, 1);
+
+    for (let uuid in game_objects) {
+
+      game_objects[uuid].mesh.position.copy(game_objects[uuid].body.position)
+      game_objects[uuid].mesh.quaternion.copy(game_objects[uuid].body.quaternion)
+
+    }
 
     // Render the scene
     composer.render(dt);
@@ -115,10 +130,7 @@ async function main() {
 
 };
 
-/*
- * Load the physics engine and then calls main
- */
-PhysicsLoader('./ammo', () => { main(); });
+main();
 
 //HUD
 //ATTACKING

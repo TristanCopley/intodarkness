@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@enable3d/ammo-physics": "^0.25.3",
+    "cannon-es": "^0.20.0",
     "enable3d": "^0.25.3",
     "postprocessing": "^6.29.2",
     "socket.io-client": "^4.5.4",

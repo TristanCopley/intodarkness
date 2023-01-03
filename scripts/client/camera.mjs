@@ -36,6 +36,7 @@ export function update_look_direction(dt) {
     euler.y += mouse_y * CAMERA_SPEED;
     euler.x += mouse_x * CAMERA_SPEED;
 
+    // Limit the vertical angle
     euler.x = Math.max( PI_2 - MAX_POLAR_ANGLE, Math.min( PI_2 - MIN_POLAR_ANGLE, euler.x ) );
 
     camera.quaternion.setFromEuler( euler );
