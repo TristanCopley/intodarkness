@@ -84,12 +84,6 @@ async function main() {
     }
   );
 
-  // TEST REMOVE FOLLOWING CODE
-  camera.position.set(25, 25, 25);
-  camera.lookAt(0, 0, 0);
-  console.log('physics', physics);
-  /////////////////////////////
-
   // Instantiate timing objects
   let lastTime = 0;
   let dt = 0;
