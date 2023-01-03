@@ -15,9 +15,10 @@ export function move_player(dt) {
     let movement = new THREE.Vector3(lateral * _PLAYER_SPEED, 0 * _PLAYER_SPEED, forward * _PLAYER_SPEED);
     game_objects.player.body.applyForce(movement.x, movement.y, movement.z);
 
-    camera.position.set(game_objects.player.body.position.x, game_objects.player.body.position.y + 20, game_objects.player.body.position.z);
-
+    if (game_objects.player) camera.position.set(game_objects.player.position.x, game_objects.player.position.y + 20, game_objects.player.position.z);
+    /*
     if (Math.random() < 0.1) {
+        
         const raycaster = physics.add.raycaster('allHits');
         raycaster.setRayFromWorld(game_objects.player.body.position.x, game_objects.player.body.position.y, game_objects.player.body.position.z)
         raycaster.setRayToWorld(game_objects.player.body.position.x, game_objects.player.body.position.y - 20, game_objects.player.body.position.z)
@@ -30,8 +31,10 @@ export function move_player(dt) {
 
         // destroy the raycaster if you do not use it anymore
         // (but you can of course reuse it multiple times)
-        raycaster.destroy()
-    }
+        //raycaster.destroy()
+
+        //console.log(physics)
+    } */
 
 
 }

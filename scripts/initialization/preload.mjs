@@ -31,6 +31,12 @@ export async function preload() {
     models['engine'] = await loader.loadAsync('assets/engine.glb');
     set_mesh_properties(models['engine'], {shadows: true});
 
+    models['tree0'] = await loader.loadAsync('assets/tree0.glb');
+    set_mesh_properties(models['tree0'], {shadows: true});
+
+    models['tree1'] = await loader.loadAsync('assets/tree1.glb');
+    set_mesh_properties(models['tree1'], {shadows: true});
+
     return true;
 
 }
